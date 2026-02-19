@@ -63,7 +63,7 @@ config: Config = Config(**conf_dict)
 print(config)
 
 env = pgx.make(config.env_id)
-baseline = pgx.make_baseline_model(config.env_id + "_v0")
+from pgx.experimental import act_randomly
 
 
 def forward_fn(x, is_eval=False):
@@ -84,11 +84,10 @@ optimizer = optax.adam(learning_rate=config.learning_rate)
 def recurrent_fn(model, rng_key: jnp.ndarray, action: jnp.ndarray, state: pgx.State):
     # model: params
     # state: embedding
-    del rng_key
     model_params, model_state = model
 
     current_player = state.current_player
-    state = jax.vmap(env.step)(state, action)
+    state = jax.vmap(env.step)(state, action, jax.random.split(rng_key, action.shape[0]))
 
     (logits, value), _ = forward.apply(model_params, model_state, state.observation, is_eval=True)
     # mask invalid actions
@@ -243,12 +242,13 @@ def evaluate(rng_key, my_model):
         (my_logits, _), _ = forward.apply(
             my_model_params, my_model_state, state.observation, is_eval=True
         )
-        opp_logits, _ = baseline(state.observation)
+        # Use random policy as opponent instead of baseline model
+        opp_logits = jnp.where(state.legal_action_mask, 0.0, jnp.finfo(jnp.float32).min)
         is_my_turn = (state.current_player == my_player).reshape((-1, 1))
         logits = jnp.where(is_my_turn, my_logits, opp_logits)
-        key, subkey = jax.random.split(key)
-        action = jax.random.categorical(subkey, logits, axis=-1)
-        state = jax.vmap(env.step)(state, action)
+        key, subkey1, subkey2 = jax.random.split(key, 3)
+        action = jax.random.categorical(subkey1, logits, axis=-1)
+        state = jax.vmap(env.step)(state, action, jax.random.split(subkey2, batch_size))
         R = R + state.rewards[jnp.arange(batch_size), my_player]
         return (key, state, R)
 
