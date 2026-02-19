@@ -13,6 +13,9 @@ from pgx._src.games.war_chest_simplified import (
     NUM_COLORED_UNITS,
     NUM_HEX_CHANNELS,
     NUM_GLOBAL_FEATURES,
+    GRID_SIZE,
+    GRID_CHANNELS,
+    OBS_SHAPE,
     OBS_SIZE,
     MAX_STEP_COUNT,
     ACT_DEPLOY_START,
@@ -48,7 +51,7 @@ class State(core.State):
     in the _x field, following the same pattern as other PGX games.
     """
     current_player: Array = jnp.int32(0)
-    observation: Array = jnp.zeros(OBS_SIZE, dtype=jnp.float32)
+    observation: Array = jnp.zeros(OBS_SHAPE, dtype=jnp.float32)
     rewards: Array = jnp.float32([0.0, 0.0])
     terminated: Array = FALSE
     truncated: Array = FALSE
@@ -152,17 +155,22 @@ class WarChestSimplified(core.Env):
         rewards = self._game.rewards(x)
         legal_action_mask = self._game.legal_action_mask(x)
         
-        # Handle max steps truncation (using PGX _step_count)
-        truncated = (state._step_count >= MAX_STEP_COUNT) & ~x.terminated
-        
-        return state.replace(  # type: ignore
+        state = state.replace(  # type: ignore
             current_player=x.current_player,
             legal_action_mask=legal_action_mask,
             terminated=terminated,
-            truncated=truncated,
             rewards=rewards,
             _x=x,
         )
+        
+        # Handle max steps: end with draw (matching chess/gardner_chess pattern)
+        state = jax.lax.cond(
+            MAX_STEP_COUNT <= state._step_count,
+            lambda: state.replace(terminated=TRUE),  # type: ignore
+            lambda: state,
+        )
+        
+        return state
     
     def _observe(self, state: core.State, player_id: Array) -> Array:
         """Generate observation for a specific player.

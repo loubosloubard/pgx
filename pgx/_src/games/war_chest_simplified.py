@@ -220,7 +220,7 @@ def _decode_action(action: Array):
 #   10: Is control point
 NUM_HEX_CHANNELS = 11
 
-# Global features (appended as flat array):
+# Global features (broadcast as constant planes in 2D grid):
 #   - My hand (5 values, histogram)
 #   - Opponent's face-up discard (5 values, public)
 #   - My supply (5 values)
@@ -239,7 +239,27 @@ NUM_HEX_CHANNELS = 11
 #   - My hand coin count (1 value)
 NUM_GLOBAL_FEATURES = 5 * 9 + 3 + 4
 
-OBS_SIZE = NUM_HEXES * NUM_HEX_CHANNELS + NUM_GLOBAL_FEATURES  # 37*11 + 52 = 459
+# 2D grid for Conv2D compatibility
+# Map 37 hexes onto a 7×7 grid via (q+3, r+3). 12 cells are padding (zero).
+GRID_SIZE = 7
+GRID_CHANNELS = NUM_HEX_CHANNELS + NUM_GLOBAL_FEATURES  # 11 + 52 = 63
+OBS_SHAPE = (GRID_SIZE, GRID_SIZE, GRID_CHANNELS)  # (7, 7, 63)
+OBS_SIZE = GRID_SIZE * GRID_SIZE * GRID_CHANNELS  # kept for reference
+
+# Precomputed hex-to-grid mapping: hex i -> grid position (row, col) = (q+3, r+3)
+HEX_TO_GRID_ROW = HEX_COORDS[:, 0] + 3  # q + 3
+HEX_TO_GRID_COL = HEX_COORDS[:, 1] + 3  # r + 3
+
+# Valid hex mask on the 7×7 grid (True at positions with hexes, False at padding)
+def _build_valid_hex_mask():
+    mask = jnp.zeros((GRID_SIZE, GRID_SIZE), dtype=jnp.bool_)
+    for i in range(NUM_HEXES):
+        r = int(HEX_TO_GRID_ROW[i])
+        c = int(HEX_TO_GRID_COL[i])
+        mask = mask.at[r, c].set(True)
+    return mask
+
+VALID_HEX_MASK = _build_valid_hex_mask()  # (7, 7) bool
 
 
 # =============================================================================
@@ -751,20 +771,24 @@ class Game:
         )
     
     def observe(self, state: GameState, player_id: Array) -> Array:
-        """Generate observation for a player.
+        """Generate observation for a player as a 2D grid.
         
         Includes all public info (per rules Section 5) plus own private info.
+        The observation is a (7, 7, 63) array where:
+          - Channels 0-10: per-hex board features mapped onto a 7×7 grid
+          - Channels 11-62: global features broadcast as constant planes
+        Invalid grid cells (padding) are all zeros.
         
         Args:
             state: Current game state
             player_id: Player to generate observation for (0 or 1)
             
         Returns:
-            Observation array of shape (OBS_SIZE,)
+            Observation array of shape (7, 7, 63)
         """
         opp = 1 - player_id
         
-        # Board observation (37 hexes × 11 channels)
+        # --- Per-hex board features (37 hexes × 11 channels) ---
         obs_board = jnp.zeros((NUM_HEXES, NUM_HEX_CHANNELS), dtype=jnp.float32)
         
         # My units (channels 0-3: count per colored unit type, Royal excluded)
@@ -786,7 +810,14 @@ class Game:
         obs_board = obs_board.at[:, 9].set((state.control_owner == opp).astype(jnp.float32))
         obs_board = obs_board.at[:, 10].set(IS_CONTROL_POINT.astype(jnp.float32))
         
-        # Global features — all public + own private info
+        # --- Place hex features onto 7×7 grid ---
+        obs_grid = jnp.zeros((GRID_SIZE, GRID_SIZE, GRID_CHANNELS), dtype=jnp.float32)
+        
+        # Scatter hex features to grid positions
+        # obs_board is (37, 11), we place each hex's 11 channels at its grid (row, col)
+        obs_grid = obs_grid.at[HEX_TO_GRID_ROW, HEX_TO_GRID_COL, :NUM_HEX_CHANNELS].set(obs_board)
+        
+        # --- Global features as broadcast planes ---
         my_hand = state.hand[player_id].astype(jnp.float32)                   # 5 (private)
         opp_visible_discard = state.discard_faceup[opp].astype(jnp.float32)   # 5 (public)
         my_supply = state.supply[player_id].astype(jnp.float32)               # 5 (public)
@@ -820,9 +851,16 @@ class Game:
             jnp.array([is_my_turn, i_have_initiative, init_taken]),  # 3
             jnp.array([opp_facedown_count, opp_bag_count,
                        opp_hand_count, my_hand_count]),  # 4
-        ])
+        ])  # shape: (52,)
         
-        # Flatten and concatenate
-        obs = jnp.concatenate([obs_board.flatten(), global_features])
+        # Broadcast each global scalar as a constant plane over valid hexes only
+        # global_features shape: (52,) -> (1, 1, 52) -> broadcast to (7, 7, 52)
+        global_planes = jnp.broadcast_to(
+            global_features[None, None, :], (GRID_SIZE, GRID_SIZE, NUM_GLOBAL_FEATURES)
+        )
+        # Mask out padding cells: only valid hex positions get global features
+        global_planes = global_planes * VALID_HEX_MASK[:, :, None]
         
-        return obs
+        obs_grid = obs_grid.at[:, :, NUM_HEX_CHANNELS:].set(global_planes)
+        
+        return obs_grid
