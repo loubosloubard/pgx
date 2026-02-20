@@ -360,5 +360,6 @@ if __name__ == "__main__":
                 "train/value_loss": value_loss,
                 "hours": hours,
                 "frames": frames,
+                "frames_per_second": frames / (hours * 3600),
             }
         )

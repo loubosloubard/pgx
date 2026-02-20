@@ -1,0 +1,107 @@
+WAR CHEST SIMPLIFIED: RULES OF PLAY
+
+1. COMPONENTS
+
+(Shared between two players)
+* Board: A symmetric hexagonal grid with a radius of 3.
+* Initiative Marker : Indicates who will start playing in the next round.
+
+(Unique to each player)
+* 21 Coins:
+- 20 Unit Coins: Colored coins representing military units. Each player has 5 coins of each of the 4 colors: Red, Green, Blue, Yellow.
+- 1 Royal Coin: Special coin representing the faction of each player (Wolf and Raven).
+Note: A face-up coin displays its color (or its faction if it is the Royal Coin) to both player. A face-down coin hides that information from the opponent, only the player who owns it knows what it is.
+* Bag: For drawing coins.
+* Hand: To use the drawn coins.
+* Supply: To recruit new units.
+* Discard: Where discarded coins go.
+* Cemetery : Where captured units are permanently removed.
+
+2. SET UP
+
+The Board:
+* A hex grid that contains 37 flat-topped hexes. The axial coordinates (q,r) range from -3 to +3, (0,0) being the hex at the center of the grid.
+* 6 of the hexes are Neutral Control Points, located in (-3, 1), (-2, 2), (-1, 0), (1, 0), (2, -2), (3, -1).
+* Each player starts with 2 Control Point hexes already claimed by their faction. Wolf's ones are located in (-1, 3) and (2, 1), Raven's ones are located in (1, -3) and (-2, -1).
+
+Here is the flat-topped hexagonal grid with radius 3 represented in a 7x7 CSV table with its axial coordinates (q,r) and the Control Points (NA are the hexes that don't exist):
+
+,q=-3,q=-2,q=-1,q=0,q=1,q=2,q=3
+r=3,"(-3,3)","(-2,3)","(WCP)","(0,3)",NA,NA,NA
+r=2,"(-3,2)","(NCP)","(-1,2)","(0,2)","(1,2)",NA,NA
+r=1,"(NCP)","(-2,1)","(-1,1)","(0,1)","(1,1)","(WCP)",NA
+r=0,"(-3,0)","(-2,0)","(NCP)","(0,0)","(NCP)","(2,0)","(3,0)"
+r=-1,NA,"(RCP)","(-1,-1)","(0,-1)","(1,-1)","(2,-1)","(NCP)"
+r=-2,NA,NA,"(-1,-2)","(0,-2)","(1,-2)","(NCP)","(3,-2)"
+r=-3,NA,NA,NA,"(0,-3)","(RCP)","(2,-3)","(3,-3)"
+
+Player Setup:
+* Who's Wolf and who's Raven is assigned randomly. The Initiative Marker is assigned randomly.
+* The initial Bag of each player contains 9 coins (face-down): 2 Unit Coins of each color + their faction Royal Coin.
+* The initial Supply of each player contains the remaining 12 Unit Coins (face-up): 3 Unit Coins of each color.
+
+3. GAME OVERVIEW
+* The game is played over a series of rounds. Each round is divided into two phases: 1) Draw coins and 2) Use coins.
+* Phase 1: Draw Coins
+- At the start of the round, each player draws 3 coins from their bag and keep them face-down in their Hand.
+- Refilling the Bag: If you still need to draw coins but your Bag is empty, place all coins currently in your Discard into your Bag and then continue drawing.
+- Not Enough Coins: If before the Draw phase you have fewer than 3 coins total between your Bag and Discard, draw what you have. During the Use Coins phase, you will take fewer turns. Once you run out of coins, your opponent continues taking turns until their Hand is empty.
+* Phase 2: Use Coins
+- Starting with the player that has the Initiative Marker, players alternate taking turns. On your turn, you must use exactly one coin to perform one Action.
+- Players continue alternating until both players have used all coins in their Hands.
+* Winning the Game: The game ends when 6 Control Points belong to a player's faction. That player is the winner.
+
+4. ACTIONS
+* There are three ways to use a coin:
+
+* A. Placement Actions (face-up): place face-up a Unit Coin from your Hand to the board to either Deploy or Bolster.
+1) Deploy: place it on an empty hex of the board.
+- That empty hex must be a Control Point that belongs to your Faction.
+- You cannot deploy a Unit Coin if you already have a Unit Coin of that color on the board.
+2) Bolster: place it on a matching (same color) Unit Coin already on the board to add to its stack.
+- There is no limit to how high a stack can be.
+- A Unit Coin with multiple coins stacked still behave on the board like a single Unit Coin. It is just harder to remove it from its hex, it essentially has multiple "hit points" (see maneuver below).
+
+* B. Discard Actions (face-down): discard face-down a coin (can be either a Unit Coin or the Royal coin) from your Hand to your Discard to either Claim Initiative, Recruit or Pass.
+1) Claim Initiative: take the Initiative Marker. You will go first in the next round.
+- Claiming initiative can only be done once per round. If your opponent claimed the iniative, you cannot claim it back on the same round.
+- If you already have the Initiative Marker, you obviously cannot take the action of claiming the initiative.
+2) Recruit: take a Unit Coin from your Supply and place it face-up in your Discard.
+- You can choose any Unit Coin remaining in your Supply (it does not have to match the coin you discarded to pay for it).
+- This Unit Coin will then enter your Bag (and then your Hand) in later rounds, as indicated previously in the rules.
+3) Pass: do nothing.
+- You may pass now and still take normal actions on your subsequent turns in the same round.
+
+Note: As the Royal Coin has no matching unit, it can only be used for Discard (face-down) actions (Initiative, Recruit, Pass). It cannot be deployed or bolstered to the board.
+
+* C. Discard Actions (face-up): discard face-up a Unit Coin from your Hand to your Discard to maneuver a matching (same color) Unit Coin already on the board. A maneuver can be a move, a control or an attack.
+1) Move: Move the matching Unit Coin one space into an adjacent, empty hex.
+- Units cannot move through or into hexes occupied by other Unit Coins (friendly or enemy).
+2) Control: Claim to your faction the Control Point hex the matching Unit Coin is currently standing on.
+- The Control Point can either be Neutral or claimed by the faction of the opponent.
+- The starting faction Control Points, claimed since the beginning of the game, can also be claimed by a Control maneuver.
+3) Attack: Have the matching Unit Coin attack an adjacent (one space) enemy Unit Coin.
+- An attack remove one coin from the enemy Unit Coin stack.
+- The captured coin is permanently removed, into the Cemetery.
+- If the captured coin was an un-stacked Unit Coin, the hex it was standing on becomes empty. The player who owned the captured coin can re-deploy this Unit Coin color type later in the game, as he has no more of that color already on the board.
+
+5. REMINDER
+
+* When coding the simulator of the game to eventually train an AI on it, one should make sure that the AI uses all the following information to make an informed decision:
+
+Public info known to both player:
+- Who currently has the Initiative Marker and whether it has already been claimed this round.
+- Which Unit Coins (and their amount) are currently in each player supply.
+- Which Unit Coins (and their amount) are currently in each player Cemetery.
+- Which face-up Unit Coins (and their amount) are currently in each player Discard.
+- How many face-down coins are currently in each player Discard.
+- How many face-down coins are currently in each player Bag.
+- How many face-down coins are currently in each player Hand. 
+- Which Unit Coins from both players (and their amount, i.e. how stacked a Unit Coin is) are currently on the board, and their location on the board.
+- How many Control Point each player currently control, and their location on the board.
+
+Private info known only to the player:
+- Which coins are currently in his hand.
+- Which coins are currently face-down in his Discard.
+- Which coins are currently in his Bag. This require a bit of calculation, but that should always be the case. Indeed, the bag always starts with 2 Unit Coins of each color + the Royal Coin. And then, the player knows what he has drawn from it (thus what is left inside the Bag), and the coins that are going to go in the bag (face-down and face-up coins from the Discard).
+__________
