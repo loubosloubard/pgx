@@ -8,7 +8,7 @@ import jax
 import jax.numpy as jnp
 
 # Import from the game logic file directly (same directory)
-from war_chest_simplified import (
+from pgx._src.games.war_chest_simplified import (
     Game, GameState,
     HEX_COORDS, NEIGHBOR_MAP, IS_CONTROL_POINT, NUM_HEXES, NUM_UNIT_TYPES,
     NUM_COLORED_UNITS, NUM_ACTIONS,
